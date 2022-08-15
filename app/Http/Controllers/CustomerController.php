@@ -7,6 +7,7 @@ use App\Models\Customer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use League\Flysystem\Exception;
 
@@ -35,7 +36,8 @@ class CustomerController extends Controller
             //Process redis again from scratch
             ProcessCustomers::dispatch()->onQueue('default');
         } catch (Exception $e) {
-            $customers = [];
+            Log::error($e->getMessage());
+            $customers = $customers ?? [];
         } finally {
             return view('customers', ['customers' => $customers]);
         }
