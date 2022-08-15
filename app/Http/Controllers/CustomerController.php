@@ -8,6 +8,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
+use League\Flysystem\Exception;
 
 class CustomerController extends Controller
 {
@@ -16,24 +17,28 @@ class CustomerController extends Controller
      */
     public function index(): View
     {
-        $customers = Customer::all();
+        try {
+            $customers = Customer::all();
 
-        // Clear redis just for testing and demonstration purposes only
-        // Also just wanted to demonstrate redis pipeline and collection filter
-        Redis::pipeline(function ($pipe) use ($customers) {
-            for ($i = 1; $i <= $customers->count(); $i++) {
-                $customer = $customers->filter(function($item) use ($i) {
-                    return $item->id == $i;
-                })->first();
+            // Clear redis just for testing and demonstration purposes only
+            // Also just wanted to demonstrate redis pipeline and collection filter
+            Redis::pipeline(function ($pipe) use ($customers) {
+                for ($i = 1; $i <= $customers->count(); $i++) {
+                    $customer = $customers->filter(function ($item) use ($i) {
+                        return $item->id == $i;
+                    })->first();
 
-                $pipe->del("customer:$i", $customer);
-            }
-        });
+                    $pipe->del("customer:$i", $customer);
+                }
+            });
 
-        //Process redis again from scratch
-        ProcessCustomers::dispatch()->onQueue('default');
-
-        return view('customers', ['customers' => $customers]);
+            //Process redis again from scratch
+            ProcessCustomers::dispatch()->onQueue('default');
+        } catch (Exception $e) {
+            $customers = [];
+        } finally {
+            return view('customers', ['customers' => $customers]);
+        }
     }
 
     /**
@@ -73,10 +78,18 @@ class CustomerController extends Controller
      */
     public function update(Request $request, int $id)
     {
+        $data = $request->validate([
+            'name' => 'required',
+            'phone' => 'required',
+        ], [
+            'name.required' => 'Name is required.',
+            'phone.required' => 'Phone Number is required.',
+        ]);
+
         $customer = Customer::where('id', $id)
             ->update([
-                'name' => $request->get('name'),
-                'phone' => $request->get('phone'),
+                'name' => $data['name'],
+                'phone' => $data['phone']
             ]);
 
         Redis::set('customer:' . $customer->id, $customer);
