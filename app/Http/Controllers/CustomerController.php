@@ -46,32 +46,50 @@ class CustomerController extends Controller
     /**
      * @param Request $request
      * @param int $id
-     * @return mixed
+     *
+     * @return string
      */
-    public function show(Request $request, int $id)
+    public function show(Request $request, int $id): string
     {
-        return Redis::get('customer:' . $id);
+        try {
+            $data = Redis::get('customer:' . $id);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+            $data = $data ?? '';
+        } finally {
+            return $data;
+        }
     }
 
     /**
      * @param Request $request
+     *
      * @return RedirectResponse
      */
-    public function create(Request $request)
+    public function create(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'name' => 'required',
-            'phone' => 'required',
-        ], [
-            'name.required' => 'Name is required.',
-            'phone.required' => 'Phone Number is required.',
-        ]);
+        try {
+            $status = 'success';
+            $message = 'Customer created successfully!';
 
-        $customer = Customer::create($data);
+            $data = $request->validate([
+                'name' => 'required',
+                'phone' => 'required',
+            ], [
+                'name.required' => 'Name is required.',
+                'phone.required' => 'Phone Number is required.',
+            ]);
 
-        Redis::set('customer:' . $customer->id, $customer);
+            $customer = Customer::create($data);
 
-        return back()->with('success', 'Customer created successfully!');
+            Redis::set('customer:' . $customer->id, $customer);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+            $status = 'error';
+            $message = 'Customer could not be created.';
+        } finally {
+            return back()->with($status, $message);
+        }
     }
 
     /**
@@ -80,21 +98,25 @@ class CustomerController extends Controller
      */
     public function update(Request $request, int $id)
     {
-        $data = $request->validate([
-            'name' => 'required',
-            'phone' => 'required',
-        ], [
-            'name.required' => 'Name is required.',
-            'phone.required' => 'Phone Number is required.',
-        ]);
-
-        $customer = Customer::where('id', $id)
-            ->update([
-                'name' => $data['name'],
-                'phone' => $data['phone']
+        try {
+            $data = $request->validate([
+                'name' => 'required',
+                'phone' => 'required',
+            ], [
+                'name.required' => 'Name is required.',
+                'phone.required' => 'Phone Number is required.',
             ]);
 
-        Redis::set('customer:' . $customer->id, $customer);
+            $customer = Customer::where('id', $id)
+                ->update([
+                    'name' => $data['name'],
+                    'phone' => $data['phone']
+                ]);
+
+            Redis::set('customer:' . $customer->id, $customer);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
     }
 
     /**
@@ -103,7 +125,11 @@ class CustomerController extends Controller
      */
     public function delete(Request $request, int $id)
     {
-        Customer::find($id)->delete();
-        Redis::del('customer:' . $id);
+        try {
+            Customer::find($id)->delete();
+            Redis::del('customer:' . $id);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
     }
 }
