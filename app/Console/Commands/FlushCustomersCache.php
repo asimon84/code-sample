@@ -2,9 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Customer;
+use App\Jobs\FlushCustomers;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Redis;
 
 class FlushCustomersCache extends Command
 {
@@ -39,18 +38,6 @@ class FlushCustomersCache extends Command
      */
     public function handle()
     {
-        $customers = Customer::all();
-
-        // Clear redis just for testing and demonstration purposes only
-        // Also just wanted to demonstrate redis pipeline and collection filter
-        Redis::pipeline(function ($pipe) use ($customers) {
-            for ($i = 1; $i <= $customers->count(); $i++) {
-                $customer = $customers->filter(function ($item) use ($i) {
-                    return $item->id == $i;
-                })->first();
-
-                $pipe->del("customer:$i", $customer);
-            }
-        });
+        FlushCustomers::dispatch()->onQueue('default');
     }
 }
