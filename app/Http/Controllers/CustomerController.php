@@ -44,22 +44,26 @@ class CustomerController extends Controller
     }
 
     /**
-     * @param Request $request
-     * @param int $id
+     * @param Customer $customer
      *
-     * @return string
+     * @return Customer
      */
-    public function show(Request $request, int $id): string
+    public function show(Customer $customer): Customer
     {
-        try {
-            $data = Redis::get('customer:' . $id);
-        } catch (Exception $e) {
-            Log::error($e->getMessage());
-            $data = $data ?? '';
-        } finally {
-            return $data;
-        }
+        return $customer;
     }
+
+//    public function show(Request $request, int $id): string
+//    {
+//        try {
+//            $data = Redis::get('customer:' . $id);
+//        } catch (Exception $e) {
+//            Log::error($e->getMessage());
+//            $data = $data ?? '';
+//        } finally {
+//            return $data;
+//        }
+//    }
 
     /**
      * @param Request $request
